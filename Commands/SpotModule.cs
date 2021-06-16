@@ -20,7 +20,7 @@ namespace MovingSpirit.Commands
         public async Task StatusCommand(CommandContext ctx)
         {
             var statusResponse = await spotController.GetStatus();
-            await ctx.RespondAsync($"Instance is `{statusResponse.Status}` with `{statusResponse.PlayerCount}`");
+            await ctx.RespondAsync($"Instance is `{statusResponse.Status}` with `{statusResponse.PlayerCount}` player(s)");
         }
 
         [Command("start")]
@@ -55,7 +55,7 @@ namespace MovingSpirit.Commands
             }
             else
             {
-                await ctx.RespondAsync($"Not stopping the instance as current state is `{statusResponse}` with `{statusResponse.PlayerCount}` player(s)g");
+                await ctx.RespondAsync($"Not stopping the instance as current state is `{statusResponse}` with `{statusResponse.PlayerCount}` player(s)");
             }
         }
     }
