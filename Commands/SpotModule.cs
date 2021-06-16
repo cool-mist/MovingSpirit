@@ -27,17 +27,17 @@ namespace MovingSpirit.Commands
         [Description("Start spot instance")]
         public async Task StartCommand(CommandContext ctx)
         {
-            var status = await spotController.GetStatus();
+            var statusResponse = await spotController.GetStatus();
 
-            if (status == "Stopped")
+            if (statusResponse.Status == "Stopped")
             {
-                await ctx.RespondAsync($"Starting instance as current state is `{status}`");
+                await ctx.RespondAsync($"Starting instance as current state is `{statusResponse.Status}` with `{statusResponse.PlayerCount}` player(s)");
                 var newStatus = await spotController.Start();
                 await ctx.RespondAsync($"New state is `{newStatus}`");
             }
             else
             {
-                await ctx.RespondAsync($"Not starting the instance as current state is `{status}`");
+                await ctx.RespondAsync($"Not starting the instance as current state is `{statusResponse.Status}` with `{statusResponse.PlayerCount}` player(s)");
             }
         }
 
@@ -45,17 +45,17 @@ namespace MovingSpirit.Commands
         [Description("Stop spot instance")]
         public async Task StopCommand(CommandContext ctx)
         {
-            var status = await spotController.GetStatus();
+            var statusResponse = await spotController.GetStatus();
 
-            if (status == "Running")
+            if (statusResponse.Status == "Running" && statusResponse.PlayerCount < 1)
             {
-                await ctx.RespondAsync($"Stopping instance as current state is `{status}`");
+                await ctx.RespondAsync($"Stopping instance as current state is `{statusResponse}` with `{statusResponse.PlayerCount}` player(s)");
                 var newStatus = await spotController.Stop();
                 await ctx.RespondAsync($"New state is `{newStatus}`");
             }
             else
             {
-                await ctx.RespondAsync($"Not stopping the instance as current state is `{status}`");
+                await ctx.RespondAsync($"Not stopping the instance as current state is `{statusResponse}` with `{statusResponse.PlayerCount}` player(s)");
             }
         }
     }

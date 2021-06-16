@@ -11,7 +11,7 @@ namespace MovingSpirit.Api
 
         Task<string> Stop();
 
-        Task<string> GetStatus();
+        Task<SpotControllerResponse> GetStatus();
 
     }
 
@@ -32,10 +32,9 @@ namespace MovingSpirit.Api
             httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Content-Type", "application/json");
         }
 
-        public async Task<string> GetStatus()
+        public Task<SpotControllerResponse> GetStatus()
         {
-            var response = await ExecuteHttpRequest<SpotControllerResponse>("minecraft/status");
-            return response.Status;
+            return ExecuteHttpRequest<SpotControllerResponse>("minecraft/status");
         }
 
         public Task<string> Start()
@@ -80,5 +79,9 @@ namespace MovingSpirit.Api
     {
         [JsonProperty("status")]
         public string Status { get; set; }
+
+
+        [JsonProperty("desired_capacity")]
+        public int PlayerCount { get; set; }
     }
 }
