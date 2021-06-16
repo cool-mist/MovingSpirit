@@ -30,7 +30,7 @@ namespace MovingSpirit
 
             var commands = bot.UseCommandsNext(new CommandsNextConfiguration()
             {
-                StringPrefixes = new[] { "#" },
+                StringPrefixes = new[] { "@" },
                 Services = serviceProvider
             });
 
