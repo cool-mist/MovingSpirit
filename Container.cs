@@ -9,8 +9,8 @@ namespace MovingSpirit
         public static IServiceProvider CreateServiceProvider()
         {
             // TODO : Configs
-            string clientId = Environment.GetEnvironmentVariable("MS-CLIENTID");
-            string clientSecret = Environment.GetEnvironmentVariable("MS-CLIENTSECRET");
+            string clientId = Environment.GetEnvironmentVariable("MS_CLIENTID");
+            string clientSecret = Environment.GetEnvironmentVariable("MS_CLIENTSECRET");
             string audience = "https://api.vanilla.nean.dev";
             string tokenUrl = "https://nean.us.auth0.com/oauth/token";
             string apiBaseUrl = "https://api.vanilla.nean.dev/";

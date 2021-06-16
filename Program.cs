@@ -47,7 +47,7 @@ namespace MovingSpirit
 
         private string ReadToken(IServiceProvider serviceProvider)
         {
-            var token = Environment.GetEnvironmentVariable("MS-TOKEN");
+            var token = Environment.GetEnvironmentVariable("MS_TOKEN");
             if (string.IsNullOrWhiteSpace(token))
             {
                 Console.WriteLine("Missing token");
