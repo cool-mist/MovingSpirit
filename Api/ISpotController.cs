@@ -93,5 +93,10 @@ namespace MovingSpirit.Api
 
             return $"instance is `{Status}`";
         }
+
+        public override string ToString()
+        {
+            return ToString(capitalize: false);
+        }
     }
 }
