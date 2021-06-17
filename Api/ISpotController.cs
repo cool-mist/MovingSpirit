@@ -82,6 +82,16 @@ namespace MovingSpirit.Api
 
 
         [JsonProperty("desired_capacity")]
-        public int PlayerCount { get; set; }
+        public int SpotCapacity { get; set; }
+
+        public string ToString(bool capitalize = false)
+        {
+            if (capitalize)
+            {
+                return $"Instance is `{Status}`";
+            }
+
+            return $"instance is `{Status}`";
+        }
     }
 }

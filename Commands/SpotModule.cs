@@ -1,6 +1,7 @@
 ﻿using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
 using MovingSpirit.Api;
+using System;
 using System.Threading.Tasks;
 
 namespace MovingSpirit.Commands
@@ -20,42 +21,36 @@ namespace MovingSpirit.Commands
         public async Task StatusCommand(CommandContext ctx)
         {
             var statusResponse = await spotController.GetStatus();
-            await ctx.RespondAsync($"Instance is `{statusResponse.Status}` with `{statusResponse.PlayerCount}` player(s)");
+            await ctx.RespondAsync(statusResponse.ToString(capitalize: true));
         }
 
         [Command("start")]
         [Description("Start spot instance")]
         public async Task StartCommand(CommandContext ctx)
         {
-            var statusResponse = await spotController.GetStatus();
-
-            if (statusResponse.Status == "Stopped")
-            {
-                await ctx.RespondAsync($"Starting instance as current state is `{statusResponse.Status}` with `{statusResponse.PlayerCount}` player(s)");
-                var newStatus = await spotController.Start();
-                await ctx.RespondAsync($"New state is `{newStatus}`");
-            }
-            else
-            {
-                await ctx.RespondAsync($"Not starting the instance as current state is `{statusResponse.Status}` with `{statusResponse.PlayerCount}` player(s)");
-            }
+            await DoTransition("Stopped", "Starting", spotController.Start, ctx);
         }
 
         [Command("stop")]
         [Description("Stop spot instance")]
         public async Task StopCommand(CommandContext ctx)
         {
+            await DoTransition("Running", "Stopping", spotController.Stop, ctx);
+        }
+
+        private async Task DoTransition(string startState, string action, Func<Task<string>> stateFn, CommandContext ctx)
+        {
             var statusResponse = await spotController.GetStatus();
 
-            if (statusResponse.Status == "Running" && statusResponse.PlayerCount < 1)
+            if (statusResponse.Status == startState)
             {
-                await ctx.RespondAsync($"Stopping instance as current state is `{statusResponse}` with `{statusResponse.PlayerCount}` player(s)");
-                var newStatus = await spotController.Stop();
+                await ctx.RespondAsync($"{action} because {statusResponse}");
+                var newStatus = await stateFn();
                 await ctx.RespondAsync($"New state is `{newStatus}`");
             }
             else
             {
-                await ctx.RespondAsync($"Not stopping the instance as current state is `{statusResponse}` with `{statusResponse.PlayerCount}` player(s)");
+                await ctx.RespondAsync($"Not {action.ToLower()} because {statusResponse}");
             }
         }
     }
