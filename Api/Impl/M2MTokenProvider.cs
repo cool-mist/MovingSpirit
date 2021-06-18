@@ -38,7 +38,7 @@ namespace MovingSpirit.Api.Impl
             {
                 var stringContent = await httpResponse.Content.ReadAsStringAsync();
                 var tokenResponse = JsonConvert.DeserializeObject<TokenResponse>(stringContent);
-                return new AccessToken(tokenResponse.AccessToken, 0);
+                return new AccessToken(tokenResponse.AccessToken);
             }
         }
     }
