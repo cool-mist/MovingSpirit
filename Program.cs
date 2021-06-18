@@ -1,5 +1,6 @@
 ﻿using DSharpPlus;
 using DSharpPlus.CommandsNext;
+using MovingSpirit.Api.Impl;
 using MovingSpirit.Commands;
 using System;
 using System.Threading.Tasks;
@@ -12,7 +13,7 @@ namespace MovingSpirit
 
         private async Task MainAsync(string[] args)
         {
-            DiscordClient bot = CreateBot(Container.CreateServiceProvider());
+            DiscordClient bot = CreateBot(MovingSpiritContainer.CreateServiceProvider());
 
             await bot.ConnectAsync();
             await Task.Delay(-1);
