@@ -40,7 +40,6 @@ namespace MovingSpirit.Api.Impl
         private async Task<T> ExecuteHttpRequest<T>(string path)
         {
             var request = await CreateHttpRequest(HttpMethod.Get, path);
-
             using (var response = await httpClient.SendAsync(request))
             {
                 var stringContent = await response.Content.ReadAsStringAsync();

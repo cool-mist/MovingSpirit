@@ -1,7 +1,7 @@
 ﻿using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
 using MovingSpirit.Api;
-using System;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace MovingSpirit.Commands
@@ -10,47 +10,99 @@ namespace MovingSpirit.Commands
     public class SpotModule : BaseCommandModule
     {
         private readonly ISpotController spotController;
+        private readonly IMinecraftServerClient minecraftServerClient;
 
-        public SpotModule(ISpotController spotController)
+        public SpotModule(ISpotController spotController, IMinecraftServerClient mcServerClient)
         {
             this.spotController = spotController;
+            this.minecraftServerClient = mcServerClient;
         }
 
-        [Command("status")]
+        [Command("?")]
         [Description("Show spot instance status")]
         public async Task StatusCommand(CommandContext ctx)
         {
             var statusResponse = await spotController.GetStatus();
-            await ctx.RespondAsync(statusResponse.ToString(capitalize: true));
+            StringBuilder responseMessageBuilder = new StringBuilder();
+
+            responseMessageBuilder.Append(statusResponse.ToString(capitalize: true));
+
+            if (statusResponse.Status == ISpotController.RUNNING_STATE)
+            {
+                var serverStatus = await minecraftServerClient.GetServerStatus();
+
+                if (serverStatus.Online)
+                {
+                    var activePlayers = serverStatus.OnlinePlayers;
+                    responseMessageBuilder.Append($" with `{activePlayers}` players");
+                }
+                else
+                {
+                    responseMessageBuilder.Append($" but cannot fetch minecraft server status. Please try again");
+                }
+            }
+
+            await ctx.RespondAsync(responseMessageBuilder.ToString());
         }
 
-        [Command("start")]
+        [Command("up")]
         [Description("Start spot instance")]
         public async Task StartCommand(CommandContext ctx)
         {
-            await DoTransition("Stopped", "Starting", spotController.Start, ctx);
+            await DoTransition(ISpotController.RUNNING_STATE, ctx);
         }
 
-        [Command("stop")]
+        [Command("down")]
         [Description("Stop spot instance")]
         public async Task StopCommand(CommandContext ctx)
         {
-            await DoTransition("Running", "Stopping", spotController.Stop, ctx);
+            await DoTransition(ISpotController.STOPPED_STATE, ctx);
         }
 
-        private async Task DoTransition(string startState, string action, Func<Task<string>> stateFn, CommandContext ctx)
+        private async Task DoTransition(string targetState, CommandContext ctx)
         {
             var statusResponse = await spotController.GetStatus();
 
-            if (statusResponse.Status == startState)
+            if (targetState == ISpotController.RUNNING_STATE)
             {
-                await ctx.RespondAsync($"{action} because {statusResponse}");
-                var newStatus = await stateFn();
-                await ctx.RespondAsync($"New state is `{newStatus}`");
+                if (statusResponse.Status == ISpotController.STOPPED_STATE)
+                {
+                    await ctx.RespondAsync($"Starting instance");
+                    var newState = await spotController.Start();
+                    await ctx.RespondAsync($"New state is `{newState}`");
+
+                    return;
+                }
+
+                await ctx.RespondAsync($"Cannot start instance because {statusResponse}");
+                return;
             }
-            else
+
+            if (targetState == ISpotController.STOPPED_STATE)
             {
-                await ctx.RespondAsync($"Not {action.ToLower()} because {statusResponse}");
+                if (statusResponse.Status == ISpotController.RUNNING_STATE)
+                {
+                    var serverStatus = await minecraftServerClient.GetServerStatus();
+                    if (serverStatus == null || !serverStatus.Online)
+                    {
+                        await ctx.RespondAsync($"{statusResponse.ToString(capitalize: true)}, but cannot fetch minecraft server status. Please try again");
+                        return;
+                    }
+
+                    if (serverStatus.OnlinePlayers > 0)
+                    {
+                        await ctx.RespondAsync($"Cannot stop because {statusResponse} with `{serverStatus.OnlinePlayers}` players");
+                        return;
+                    }
+
+                    await ctx.RespondAsync($"Stopping instance");
+                    var newState = await spotController.Stop();
+                    await ctx.RespondAsync($"New state is `{newState}`");
+                    return;
+                }
+
+                await ctx.RespondAsync($"Cannot stop instance because {statusResponse}");
+                return;
             }
         }
     }

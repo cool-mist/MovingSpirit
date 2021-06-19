@@ -30,7 +30,7 @@ namespace MovingSpirit.Api.Impl
         public async Task<IAccessToken> GetAccessToken()
         {
             using (var httpResponse = await httpClient.PostAsync(
-                "",
+                "/oauth/token",
                     new StringContent(
                         JsonConvert.SerializeObject(tokenRequest),
                         Encoding.UTF8,

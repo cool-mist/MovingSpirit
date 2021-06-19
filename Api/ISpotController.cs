@@ -5,6 +5,9 @@ namespace MovingSpirit.Api
 {
     public interface ISpotController
     {
+        public const string RUNNING_STATE = "Running";
+        public const string STOPPED_STATE = "Stopped";
+
         Task<string> Start();
 
         Task<string> Stop();
