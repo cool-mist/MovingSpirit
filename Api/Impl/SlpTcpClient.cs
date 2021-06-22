@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace MovingSpirit.Api.Impl
@@ -15,6 +16,7 @@ namespace MovingSpirit.Api.Impl
         List<byte> tcpBuffer;
         private string serverHost;
         private int serverPort;
+        private CancellationToken cancellationToken;
 
         public SlpTcpClient(string serverHost, int serverPort)
         {
@@ -28,6 +30,8 @@ namespace MovingSpirit.Api.Impl
         */
         public async Task<PingPayload> Ping()
         {
+            this.cancellationToken = new CancellationTokenSource(TimeSpan.FromSeconds(2)).Token;
+
             if (!await ConnectAsync())
             {
                 return null;
@@ -41,17 +45,17 @@ namespace MovingSpirit.Api.Impl
             WriteString(serverHost);
             WriteShort(25565);
             WriteVarInt(1);
-            Flush(0);
+            await Flush(0);
 
             // 2. Empty message
-            Flush(0);
+            await Flush(0);
 
             var buffer = new byte[Int16.MaxValue];
 
             // 3. Server response
-            tcpClientStream.Read(buffer, 0, buffer.Length);
-            Flush(0);
-            tcpClientStream.Read(buffer, 0, buffer.Length);
+            await Read(buffer);
+            await Flush(0);
+            await Read(buffer);
 
             try
             {
@@ -73,11 +77,16 @@ namespace MovingSpirit.Api.Impl
             return null;
         }
 
+        private Task Read(byte[] buffer)
+        {
+            return tcpClientStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
+        }
+
         private async Task<bool> ConnectAsync()
         {
             Task task = this.ConnectAsync(serverHost, serverPort);
 
-            while (!task.IsCompleted)
+            while (!task.IsCompleted && cancellationToken.IsCancellationRequested)
             {
                 await Task.Delay(250);
             }
@@ -154,7 +163,7 @@ namespace MovingSpirit.Api.Impl
             tcpClientStream.WriteByte(b);
         }
 
-        internal void Flush(int id = -1)
+        internal async Task Flush(int id = -1)
         {
             var buffer = tcpBuffer.ToArray();
             tcpBuffer.Clear();
@@ -173,9 +182,9 @@ namespace MovingSpirit.Api.Impl
             var bufferLength = tcpBuffer.ToArray();
             tcpBuffer.Clear();
 
-            tcpClientStream.Write(bufferLength, 0, bufferLength.Length);
-            tcpClientStream.Write(packetData, 0, packetData.Length);
-            tcpClientStream.Write(buffer, 0, buffer.Length);
+            await tcpClientStream.WriteAsync(bufferLength, 0, bufferLength.Length, cancellationToken);
+            await tcpClientStream.WriteAsync(packetData, 0, packetData.Length, cancellationToken);
+            await tcpClientStream.WriteAsync(buffer, 0, buffer.Length, cancellationToken);
         }
 
         internal class PingPayload
