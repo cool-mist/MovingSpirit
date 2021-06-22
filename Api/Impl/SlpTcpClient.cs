@@ -30,7 +30,7 @@ namespace MovingSpirit.Api.Impl
         */
         public async Task<PingPayload> Ping()
         {
-            this.cancellationToken = new CancellationTokenSource(TimeSpan.FromSeconds(2)).Token;
+            this.cancellationToken = new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token;
 
             if (!await ConnectAsync())
             {
