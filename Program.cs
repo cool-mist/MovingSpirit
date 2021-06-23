@@ -39,7 +39,15 @@ namespace MovingSpirit
 
             commands.CommandErrored += (s, e) =>
             {
-                Console.WriteLine(e.Exception.Message);
+                if (e.Exception is TaskCanceledException)
+                {
+                    e.Context.RespondAsync("Timed out. Please try again");
+                }
+                else
+                {
+                    e.Context.RespondAsync("Unknown error occured. Please try again");
+                }
+
                 return Task.CompletedTask;
             };
 

@@ -2,6 +2,7 @@
 using System;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace MovingSpirit.Api.Impl
@@ -27,16 +28,17 @@ namespace MovingSpirit.Api.Impl
             };
         }
 
-        public async Task<IAccessToken> GetAccessToken()
+        public async Task<IAccessToken> GetAccessToken(CancellationToken cancellationToken)
         {
             using (var httpResponse = await httpClient.PostAsync(
                 "/oauth/token",
-                    new StringContent(
-                        JsonConvert.SerializeObject(tokenRequest),
-                        Encoding.UTF8,
-                        "application/json")))
+                new StringContent(
+                    JsonConvert.SerializeObject(tokenRequest),
+                    Encoding.UTF8,
+                    "application/json"),
+                cancellationToken))
             {
-                var stringContent = await httpResponse.Content.ReadAsStringAsync();
+                var stringContent = await httpResponse.Content.ReadAsStringAsync(cancellationToken);
                 var tokenResponse = JsonConvert.DeserializeObject<TokenResponse>(stringContent);
                 return new AccessToken(tokenResponse.AccessToken);
             }

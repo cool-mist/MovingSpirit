@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace MovingSpirit.Api.Impl
@@ -22,27 +23,27 @@ namespace MovingSpirit.Api.Impl
             httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Content-Type", "application/json");
         }
 
-        public Task<SpotControllerResponse> GetStatus()
+        public Task<SpotControllerResponse> GetStatus(CancellationToken cancellationToken)
         {
-            return ExecuteHttpRequest<SpotControllerResponse>("minecraft/status");
+            return ExecuteHttpRequest<SpotControllerResponse>("minecraft/status", cancellationToken);
         }
 
-        public Task<string> Start()
+        public Task<string> Start(CancellationToken cancellationToken)
         {
-            return ExecuteHttpRequest<string>("minecraft/start");
+            return ExecuteHttpRequest<string>("minecraft/start", cancellationToken);
         }
 
-        public Task<string> Stop()
+        public Task<string> Stop(CancellationToken cancellationToken)
         {
-            return ExecuteHttpRequest<string>("minecraft/stop");
+            return ExecuteHttpRequest<string>("minecraft/stop", cancellationToken);
         }
 
-        private async Task<T> ExecuteHttpRequest<T>(string path)
+        private async Task<T> ExecuteHttpRequest<T>(string path, CancellationToken cancellationToken)
         {
-            var request = await CreateHttpRequest(HttpMethod.Get, path);
-            using (var response = await httpClient.SendAsync(request))
+            var request = await CreateHttpRequest(HttpMethod.Get, path, cancellationToken);
+            using (var response = await httpClient.SendAsync(request, cancellationToken))
             {
-                var stringContent = await response.Content.ReadAsStringAsync();
+                var stringContent = await response.Content.ReadAsStringAsync(cancellationToken);
 
                 if (typeof(T) == typeof(string))
                 {
@@ -53,10 +54,10 @@ namespace MovingSpirit.Api.Impl
             }
         }
 
-        private async Task<HttpRequestMessage> CreateHttpRequest(HttpMethod method, string path)
+        private async Task<HttpRequestMessage> CreateHttpRequest(HttpMethod method, string path, CancellationToken cancellationToken)
         {
             var request = new HttpRequestMessage(method, path);
-            var token = (await tokenProvider.GetAccessToken()).Token;
+            var token = (await tokenProvider.GetAccessToken(cancellationToken)).Token;
 
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 

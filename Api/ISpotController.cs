@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace MovingSpirit.Api
@@ -8,11 +9,11 @@ namespace MovingSpirit.Api
         public const string RUNNING_STATE = "Running";
         public const string STOPPED_STATE = "Stopped";
 
-        Task<string> Start();
+        Task<string> Start(CancellationToken cancellationToken);
 
-        Task<string> Stop();
+        Task<string> Stop(CancellationToken cancellationToken);
 
-        Task<SpotControllerResponse> GetStatus();
+        Task<SpotControllerResponse> GetStatus(CancellationToken cancellationToken);
 
     }
 

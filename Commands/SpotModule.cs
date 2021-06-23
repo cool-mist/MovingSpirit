@@ -1,7 +1,9 @@
 ﻿using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
 using MovingSpirit.Api;
+using System;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace MovingSpirit.Commands
@@ -11,70 +13,80 @@ namespace MovingSpirit.Commands
     {
         private readonly ISpotController spotController;
         private readonly IMinecraftServerClient minecraftServerClient;
+        private readonly ICommandTimeout commandTimeout;
 
-        public SpotModule(ISpotController spotController, IMinecraftServerClient mcServerClient)
+        public SpotModule(ISpotController spotController, IMinecraftServerClient mcServerClient, ICommandTimeout commandTimeout)
         {
             this.spotController = spotController;
             this.minecraftServerClient = mcServerClient;
+            this.commandTimeout = commandTimeout;
         }
 
         [Command("?")]
         [Description("Show spot instance status")]
-        public async Task StatusCommand(CommandContext ctx)
+        public Task StatusCommand(CommandContext ctx)
         {
-            var statusResponse = await spotController.GetStatus();
-            StringBuilder responseMessageBuilder = new StringBuilder();
-
-            responseMessageBuilder.Append(statusResponse.ToString(capitalize: true));
-
-            if (statusResponse.Status == ISpotController.RUNNING_STATE)
+            return ExecuteWithTimeout(async (cancellationToken) =>
             {
-                var serverStatus = await minecraftServerClient.GetServerStatus();
+                var statusResponse = await spotController.GetStatus(cancellationToken);
+                StringBuilder responseMessageBuilder = new StringBuilder();
 
-                if (serverStatus.Online)
-                {
-                    var activePlayers = serverStatus.OnlinePlayers;
-                    responseMessageBuilder.Append($" with `{activePlayers}` players");
-                }
-                else
-                {
-                    responseMessageBuilder.Append($" but cannot fetch minecraft server status. Please try again");
-                }
-            }
+                responseMessageBuilder.Append(statusResponse.ToString(capitalize: true));
 
-            await ctx.RespondAsync(responseMessageBuilder.ToString());
+                if (statusResponse.Status == ISpotController.RUNNING_STATE)
+                {
+                    var serverStatus = await minecraftServerClient.GetServerStatus(cancellationToken);
+
+                    if (serverStatus.Online)
+                    {
+                        var activePlayers = serverStatus.OnlinePlayers;
+                        responseMessageBuilder.Append($" with `{activePlayers}` players");
+                    }
+                    else
+                    {
+                        responseMessageBuilder.Append($" but cannot fetch minecraft server status. Please try again");
+                    }
+                }
+
+                await ctx.Channel.SendMessageAsync(responseMessageBuilder.ToString());
+            },
+            commandTimeout);
         }
 
         [Command("up")]
         [Description("Start spot instance")]
-        public async Task StartCommand(CommandContext ctx)
+        public Task StartCommand(CommandContext ctx)
         {
-            await DoTransition(ISpotController.RUNNING_STATE, ctx);
+            return ExecuteWithTimeout(
+                (cancellationToken) => DoTransition(ISpotController.RUNNING_STATE, ctx, cancellationToken),
+                commandTimeout);
         }
 
         [Command("down")]
         [Description("Stop spot instance")]
-        public async Task StopCommand(CommandContext ctx)
+        public Task StopCommand(CommandContext ctx)
         {
-            await DoTransition(ISpotController.STOPPED_STATE, ctx);
+            return ExecuteWithTimeout(
+                (cancellationToken) => DoTransition(ISpotController.STOPPED_STATE, ctx, cancellationToken),
+                commandTimeout);
         }
 
-        private async Task DoTransition(string targetState, CommandContext ctx)
+        private async Task DoTransition(string targetState, CommandContext ctx, CancellationToken cancellationToken)
         {
-            var statusResponse = await spotController.GetStatus();
+            var statusResponse = await spotController.GetStatus(cancellationToken);
 
             if (targetState == ISpotController.RUNNING_STATE)
             {
                 if (statusResponse.Status == ISpotController.STOPPED_STATE)
                 {
-                    await ctx.RespondAsync($"Starting instance");
-                    var newState = await spotController.Start();
-                    await ctx.RespondAsync($"New state is `{newState}`");
+                    await ctx.Channel.SendMessageAsync($"Starting instance");
+                    var newState = await spotController.Start(cancellationToken);
+                    await ctx.Channel.SendMessageAsync($"New state is `{newState}`");
 
                     return;
                 }
 
-                await ctx.RespondAsync($"Cannot start instance because {statusResponse}");
+                await ctx.Channel.SendMessageAsync($"Cannot start instance because {statusResponse}");
                 return;
             }
 
@@ -82,28 +94,36 @@ namespace MovingSpirit.Commands
             {
                 if (statusResponse.Status == ISpotController.RUNNING_STATE)
                 {
-                    var serverStatus = await minecraftServerClient.GetServerStatus();
+                    var serverStatus = await minecraftServerClient.GetServerStatus(cancellationToken);
                     if (serverStatus == null || !serverStatus.Online)
                     {
-                        await ctx.RespondAsync($"{statusResponse.ToString(capitalize: true)}, but cannot fetch minecraft server status. Please try again");
+                        await ctx.Channel.SendMessageAsync($"{statusResponse.ToString(capitalize: true)}, but cannot fetch minecraft server status. Please try again");
                         return;
                     }
 
                     if (serverStatus.OnlinePlayers > 0)
                     {
-                        await ctx.RespondAsync($"Cannot stop because {statusResponse} with `{serverStatus.OnlinePlayers}` players");
+                        await ctx.Channel.SendMessageAsync($"Cannot stop because {statusResponse} with `{serverStatus.OnlinePlayers}` players");
                         return;
                     }
 
-                    await ctx.RespondAsync($"Stopping instance");
-                    var newState = await spotController.Stop();
-                    await ctx.RespondAsync($"New state is `{newState}`");
+                    await ctx.Channel.SendMessageAsync($"Stopping instance");
+                    var newState = await spotController.Stop(cancellationToken);
+                    await ctx.Channel.SendMessageAsync($"New state is `{newState}`");
                     return;
                 }
 
-                await ctx.RespondAsync($"Cannot stop instance because {statusResponse}");
+                await ctx.Channel.SendMessageAsync($"Cannot stop instance because {statusResponse}");
                 return;
             }
+        }
+
+        private static Task ExecuteWithTimeout(Func<CancellationToken, Task> fn, ICommandTimeout commandTimeout)
+        {
+            CancellationTokenSource src = new CancellationTokenSource(commandTimeout.TimeSpan);
+            CancellationToken cancellationToken = src.Token;
+
+            return fn(cancellationToken);
         }
     }
 }

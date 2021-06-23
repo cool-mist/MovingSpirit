@@ -16,7 +16,6 @@ namespace MovingSpirit.Api.Impl
         List<byte> tcpBuffer;
         private string serverHost;
         private int serverPort;
-        private CancellationToken cancellationToken;
 
         public SlpTcpClient(string serverHost, int serverPort)
         {
@@ -26,13 +25,30 @@ namespace MovingSpirit.Api.Impl
 
         /*
         * Modified from https://gist.github.com/csh/2480d14fbbb33b4bbae3, for newer minecraft versions
-        * http://wiki.vg/Server_List_Ping#Ping_Process
+        * Implements http://wiki.vg/Server_List_Ping#Ping_Process
         */
-        public async Task<PingPayload> Ping()
+        public async Task<PingPayload> Ping(CancellationToken cancellationToken)
         {
-            this.cancellationToken = new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token;
+            try
+            {
+                return await PingInternal(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                Console.WriteLine(ex.StackTrace);
+            }
+            finally
+            {
+                tcpClientStream.Close();
+            }
 
-            if (!await ConnectAsync())
+            return null;
+        }
+
+        private async Task<PingPayload> PingInternal(CancellationToken cancellationToken)
+        {
+            if (!await ConnectAsync(cancellationToken))
             {
                 return null;
             }
@@ -45,48 +61,36 @@ namespace MovingSpirit.Api.Impl
             WriteString(serverHost);
             WriteShort(25565);
             WriteVarInt(1);
-            await Flush(0);
+            await Flush(0, cancellationToken);
 
             // 2. Empty message
-            await Flush(0);
+            await Flush(0, cancellationToken);
 
             var buffer = new byte[Int16.MaxValue];
 
             // 3. Server response
-            await Read(buffer);
-            await Flush(0);
-            await Read(buffer);
+            await Read(buffer, cancellationToken);    // Servers seem to send an empty packet and read an empty packet 
+            await Flush(0, cancellationToken);        // before actually sending the server status. This is the main
+            await Read(buffer, cancellationToken);    // modification from the initial code
 
-            try
-            {
-                var length = ReadVarInt(buffer);
-                var packet = ReadVarInt(buffer);
-                var jsonLength = ReadVarInt(buffer);
-                var json = ReadString(buffer, jsonLength);
-                return JsonConvert.DeserializeObject<PingPayload>(json);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.StackTrace);
-            }
-            finally
-            {
-                tcpClientStream.Close();
-            }
+            ReadVarInt(buffer); //length
+            ReadVarInt(buffer); //packet
 
-            return null;
+            var jsonLength = ReadVarInt(buffer);
+            var json = ReadString(buffer, jsonLength);
+            return JsonConvert.DeserializeObject<PingPayload>(json);
         }
 
-        private Task Read(byte[] buffer)
+        private Task Read(byte[] buffer, CancellationToken cancellationToken)
         {
             return tcpClientStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
         }
 
-        private async Task<bool> ConnectAsync()
+        private async Task<bool> ConnectAsync(CancellationToken cancellationToken)
         {
-            Task task = this.ConnectAsync(serverHost, serverPort);
+            ValueTask task = this.ConnectAsync(serverHost, serverPort, cancellationToken);
 
-            while (!task.IsCompleted && cancellationToken.IsCancellationRequested)
+            while (!task.IsCompleted)
             {
                 await Task.Delay(250);
             }
@@ -158,12 +162,7 @@ namespace MovingSpirit.Api.Impl
             tcpBuffer.AddRange(buffer);
         }
 
-        internal void Write(byte b)
-        {
-            tcpClientStream.WriteByte(b);
-        }
-
-        internal async Task Flush(int id = -1)
+        internal async Task Flush(int id, CancellationToken cancellationToken)
         {
             var buffer = tcpBuffer.ToArray();
             tcpBuffer.Clear();

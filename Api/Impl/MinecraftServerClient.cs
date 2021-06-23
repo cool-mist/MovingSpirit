@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Threading;
+using System.Threading.Tasks;
 using static MovingSpirit.Api.Impl.SlpTcpClient;
 
 namespace MovingSpirit.Api.Impl
@@ -13,11 +14,11 @@ namespace MovingSpirit.Api.Impl
             this.serverHost = serverHost;
         }
 
-        public async Task<IMinecraftServer> GetServerStatus()
+        public async Task<IMinecraftServer> GetServerStatus(CancellationToken cancellationToken)
         {
             using (var slpTcpClient = new SlpTcpClient(serverHost, serverPort))
             {
-                var ping = await slpTcpClient.Ping();
+                var ping = await slpTcpClient.Ping(cancellationToken);
                 return CreateMinecraftServerResponse(ping);
             }
         }

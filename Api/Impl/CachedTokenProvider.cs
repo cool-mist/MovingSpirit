@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace MovingSpirit.Api.Impl
@@ -16,7 +17,7 @@ namespace MovingSpirit.Api.Impl
             _ = SchedulePeriodicRefresh();
         }
 
-        public Task<IAccessToken> GetAccessToken()
+        public Task<IAccessToken> GetAccessToken(CancellationToken cancellationToken)
         {
             return Task.FromResult(accessToken);
         }
@@ -34,7 +35,7 @@ namespace MovingSpirit.Api.Impl
         {
             lock (accessTokenLock)
             {
-                accessToken = innerTokenProvider.GetAccessToken().GetAwaiter().GetResult();
+                accessToken = innerTokenProvider.GetAccessToken(CancellationToken.None).GetAwaiter().GetResult();
             }
         }
     }
