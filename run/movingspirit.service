@@ -1,0 +1,12 @@
+[Unit]
+Description=Moving Spirit
+
+[Service]
+EnvironmentFile=/home/glados/discord/MovingSpirit/run/TOKEN
+ExecStart=/usr/bin/dotnet /home/glados/discord/MovingSpirit/bin/Debug/net5.0/MovingSpirit.dll
+Restart=always
+RuntimeDirectory=/home/glados/discord/MovingSpirit/bin/Debug/net5.0
+RuntimeDirectoryMode=0755
+
+[Install]
+WantedBy=multi-user.target

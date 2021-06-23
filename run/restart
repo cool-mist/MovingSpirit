@@ -1,0 +1,3 @@
+git pull
+dotnet build 
+sudo service movingspirit restart
