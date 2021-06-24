@@ -5,6 +5,6 @@ namespace MovingSpirit.Api
 {
     public interface ICommandResponder
     {
-        public Task RespondAsync(Task<ICommandResponse> command, CommandContext ctx);
+        public Task RespondAsync(Task<ITaskResponse<ICommandResponse>> command, CommandContext ctx);
     }
 }

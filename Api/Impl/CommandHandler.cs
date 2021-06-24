@@ -18,23 +18,28 @@ namespace MovingSpirit.Api.Impl
             this.commandTimeout = commandTimeout;
         }
 
-        public Task<ICommandResponse> ExecuteAsync(BotCommand command)
+        public Task<ITaskResponse<ICommandResponse>> ExecuteAsync(BotCommand command)
         {
             var cancellationToken = new CancellationTokenSource(commandTimeout).Token;
 
-            switch (command)
+            return TaskExecutor.ExecuteAsync(() =>
             {
-                case BotCommand.Status: return GetStateAsync(cancellationToken);
-                case BotCommand.Start: return StartAsync(cancellationToken);
-                case BotCommand.Stop: return StopAsync(cancellationToken);
-                default: return GetStateAsync(cancellationToken);
-            }
+                return command switch
+                {
+                    BotCommand.Status => GetStateAsync(cancellationToken),
+                    BotCommand.Start => StartAsync(cancellationToken),
+                    BotCommand.Stop => StopAsync(cancellationToken),
+                    BotCommand.None => GetStateAsync(cancellationToken),
+                    _ => GetStateAsync(cancellationToken),
+                };
+            });
         }
 
         internal async Task<ICommandResponse> GetStateAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             List<ICommandAction> actions = new List<ICommandAction>();
+            var response = string.Empty;
 
             ISpotState spot = await GetSpotInstanceStateAsync(actions, cancellationToken);
             IMinecraftState minecraft = null;
@@ -49,7 +54,8 @@ namespace MovingSpirit.Api.Impl
                 Spot = spot,
                 Minecraft = minecraft,
                 Command = BotCommand.Status,
-                Actions = actions.AsReadOnly()
+                Actions = actions.AsReadOnly(),
+                Response = response
             };
         }
 
@@ -57,6 +63,7 @@ namespace MovingSpirit.Api.Impl
         {
             cancellationToken.ThrowIfCancellationRequested();
             List<ICommandAction> actions = new List<ICommandAction>();
+            var response = string.Empty;
 
             ISpotState spot = await GetSpotInstanceStateAsync(actions, cancellationToken);
             IMinecraftState minecraft = null;
@@ -64,10 +71,12 @@ namespace MovingSpirit.Api.Impl
             if (spot?.State == ISpotController.STOPPED_STATE)
             {
                 spot = await StartSpotInstanceStateAsync(actions, cancellationToken);
+                response = $"Issued `{CommandActions.StartInstance}` to start the instance";
             }
             else if (spot?.State == ISpotController.RUNNING_STATE)
             {
                 minecraft = await GetMinecraftServerStateAsync(actions, cancellationToken);
+                response = $"Did not issue `{CommandActions.StartInstance}` because instance is already running";
             }
 
             return new CommandResponse()
@@ -75,7 +84,8 @@ namespace MovingSpirit.Api.Impl
                 Spot = spot,
                 Minecraft = minecraft,
                 Command = BotCommand.Start,
-                Actions = actions.AsReadOnly()
+                Actions = actions.AsReadOnly(),
+                Response = response
             };
         }
 
@@ -83,6 +93,7 @@ namespace MovingSpirit.Api.Impl
         {
             cancellationToken.ThrowIfCancellationRequested();
             List<ICommandAction> actions = new List<ICommandAction>();
+            var response = string.Empty;
 
             ISpotState spot = await GetSpotInstanceStateAsync(actions, cancellationToken);
             IMinecraftState minecraft = null;
@@ -90,11 +101,17 @@ namespace MovingSpirit.Api.Impl
             if (spot?.State == ISpotController.RUNNING_STATE)
             {
                 minecraft = await GetMinecraftServerStateAsync(actions, cancellationToken);
+
             }
 
             if (spot?.State != ISpotController.STOPPED_STATE && minecraft?.OnlinePlayers <= 0)
             {
                 spot = await StopSpotInstanceStateAsync(actions, cancellationToken);
+                response = $"Issued `{CommandActions.StopInstance}` to stop the instance as instance is not stopped and no players are playing on the server";
+            }
+            else
+            {
+                response = $"Did not issue `{CommandActions.StopInstance}` because {minecraft?.OnlinePlayers} player(s) are still playing on the server";
             }
 
             return new CommandResponse()
@@ -102,7 +119,8 @@ namespace MovingSpirit.Api.Impl
                 Spot = spot,
                 Minecraft = minecraft,
                 Command = BotCommand.Stop,
-                Actions = actions.AsReadOnly()
+                Actions = actions.AsReadOnly(),
+                Response = response
             };
         }
 
@@ -162,6 +180,8 @@ namespace MovingSpirit.Api.Impl
         public BotCommand Command { get; set; }
 
         public IReadOnlyCollection<ICommandAction> Actions { set; get; }
+
+        public string Response { get; set; }
     }
 
     internal class CommandAction : ICommandAction

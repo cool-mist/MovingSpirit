@@ -1,5 +1,6 @@
 ﻿using DSharpPlus.CommandsNext;
 using DSharpPlus.Entities;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,22 +9,30 @@ namespace MovingSpirit.Api.Impl
 {
     internal class CommandResponder : ICommandResponder
     {
-        public async Task RespondAsync(Task<ICommandResponse> command, CommandContext ctx)
+        public async Task RespondAsync(Task<ITaskResponse<ICommandResponse>> command, CommandContext ctx)
         {
             var response = await command;
 
             var embedBuilder = new DiscordEmbedBuilder();
 
-            embedBuilder.WithTitle("Command Results")
-                .AddField("Spot Instance", GetState(response?.Spot?.State))
-                .AddField("Minecraft Server", GetState(response?.Minecraft?.Online), inline: true)
-                .AddField("Players", GetPlayers(response?.Minecraft), inline: true)
-                .AddField("Stats", GetStats(response?.Actions));
+            embedBuilder
+                .WithTitle("Command Results")
+                .WithDescription(response?.Result?.Response)
+                .AddField("Spot Instance", GetState(response?.Result?.Spot?.State))
+                .AddField("Minecraft Server", GetState(response?.Result?.Minecraft?.Online), inline: true)
+                .AddField("Players", GetPlayers(response?.Result?.Minecraft), inline: true)
+                .AddField("Total Execution Time", GetTotalExecutionTime(response))
+                .AddField("Breakdown", GetStats(response?.Result?.Actions));
 
             await ctx.Channel.SendMessageAsync(embedBuilder.Build());
         }
 
-        private string GetStats(IReadOnlyCollection<ICommandAction> actions)
+        private static string GetTotalExecutionTime(ITaskResponse<ICommandResponse> response)
+        {
+            return $"`{string.Format("{0:0.000}", response.Stats.ExecutionTime.TotalSeconds)} s`";
+        }
+
+        private static string GetStats(IReadOnlyCollection<ICommandAction> actions)
         {
             if (actions?.Count == 0)
             {
@@ -35,21 +44,25 @@ namespace MovingSpirit.Api.Impl
             foreach (ICommandAction action in actions)
             {
                 builder.Append($"**{idx}**. `{action.Name}`");
-
+                bool appendExecutionTime = true;
                 if (action.Stats.TimedOut)
                 {
                     builder.Append(" timed out after");
                 }
                 else if (action.Stats.Succeeded)
                 {
-                    builder.Append(" ran in");
+                    builder.Append(" ran for");
                 }
-                else
+                else if (action.Stats.ExecutionTime == TimeSpan.Zero)
                 {
-                    builder.Append(" failed in");
+                    builder.Append(" did not run");
+                    appendExecutionTime = false;
                 }
 
-                builder.Append($" `{string.Format("{0:0.000}", action.Stats.ExecutionTime.TotalSeconds)}` s\n");
+                if (appendExecutionTime)
+                {
+                    builder.Append($" `{string.Format("{0:0.000}", action.Stats.ExecutionTime.TotalSeconds)} s`\n");
+                }
 
                 idx++;
             }
@@ -57,7 +70,7 @@ namespace MovingSpirit.Api.Impl
             return builder.ToString();
         }
 
-        private string GetPlayers(IMinecraftState minecraft)
+        private static string GetPlayers(IMinecraftState minecraft)
         {
             if (minecraft == null || !minecraft.Online)
             {
@@ -67,7 +80,7 @@ namespace MovingSpirit.Api.Impl
             return $"{minecraft.OnlinePlayers}/{minecraft.MaxPlayers}";
         }
 
-        internal static string GetState(string state)
+        private static string GetState(string state)
         {
             if (state == null)
             {
@@ -77,7 +90,7 @@ namespace MovingSpirit.Api.Impl
             return state;
         }
 
-        internal static string GetState(bool? state)
+        private static string GetState(bool? state)
         {
             if (state == null)
             {

@@ -5,7 +5,7 @@ namespace MovingSpirit.Api
 {
     public interface ICommandHandler
     {
-        Task<ICommandResponse> ExecuteAsync(BotCommand command);
+        Task<ITaskResponse<ICommandResponse>> ExecuteAsync(BotCommand command);
     }
 
     public enum BotCommand
@@ -23,6 +23,8 @@ namespace MovingSpirit.Api
         IMinecraftState Minecraft { get; }
 
         BotCommand Command { get; }
+
+        string Response { get; }
 
         IReadOnlyCollection<ICommandAction> Actions { get; }
     }
