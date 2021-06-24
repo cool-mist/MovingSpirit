@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace MovingSpirit.Api.Impl
 {
-    class SlpTcpClient : TcpClient
+    internal class SlpTcpClient : TcpClient
     {
         int tcpBufferOffset;
         NetworkStream tcpClientStream;
@@ -29,25 +29,26 @@ namespace MovingSpirit.Api.Impl
         */
         public async Task<PingPayload> Ping(CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             try
             {
                 return await PingInternal(cancellationToken);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Console.WriteLine(ex.Message);
-                Console.WriteLine(ex.StackTrace);
+                return null;
             }
             finally
             {
                 tcpClientStream.Close();
             }
-
-            return null;
         }
 
         private async Task<PingPayload> PingInternal(CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (!await ConnectAsync(cancellationToken))
             {
                 return null;

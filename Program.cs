@@ -1,5 +1,6 @@
 ﻿using DSharpPlus;
 using DSharpPlus.CommandsNext;
+using DSharpPlus.CommandsNext.Exceptions;
 using MovingSpirit.Api.Impl;
 using MovingSpirit.Commands;
 using System;
@@ -13,7 +14,7 @@ namespace MovingSpirit
 
         private async Task MainAsync(string[] args)
         {
-            DiscordClient bot = CreateBot(MovingSpiritContainer.CreateServiceProvider());
+            DiscordClient bot = CreateBot(BotContainer.CreateServiceProvider());
 
             await bot.ConnectAsync();
             await Task.Delay(-1);
@@ -43,9 +44,14 @@ namespace MovingSpirit
                 {
                     e.Context.RespondAsync("Timed out. Please try again");
                 }
+                else if (e.Exception is CommandNotFoundException) { }
+                else if (e.Exception is InvalidOperationException)
+                {
+                    e.Context.RespondAsync("Type @help for list of commands");
+                }
                 else
                 {
-                    e.Context.RespondAsync("Unknown error occured. Please try again");
+                    e.Context.RespondAsync("Unknown error occurred. Retrying can help");
                 }
 
                 return Task.CompletedTask;

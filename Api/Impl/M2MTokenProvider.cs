@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace MovingSpirit.Api.Impl
 {
-    internal class M2MTokenProvider : IM2MTokenProvider
+    internal class M2MTokenProvider : ISpotTokenProvider
     {
         private readonly TokenRequest tokenRequest;
         private readonly HttpClient httpClient;
@@ -30,6 +30,7 @@ namespace MovingSpirit.Api.Impl
 
         public async Task<IAccessToken> GetAccessToken(CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             using (var httpResponse = await httpClient.PostAsync(
                 "/oauth/token",
                 new StringContent(
@@ -45,7 +46,7 @@ namespace MovingSpirit.Api.Impl
         }
     }
 
-    class TokenRequest
+    internal class TokenRequest
     {
         [JsonProperty("client_id")]
         public string ClientId { get; set; }
@@ -60,9 +61,21 @@ namespace MovingSpirit.Api.Impl
         public string GrantType { get; set; }
     }
 
-    class TokenResponse
+    internal class TokenResponse
     {
         [JsonProperty("access_token")]
         public string AccessToken { get; set; }
+    }
+
+    internal class AccessToken : IAccessToken
+    {
+        private readonly string accessToken;
+
+        internal AccessToken(string accessToken)
+        {
+            this.accessToken = accessToken;
+        }
+
+        public string Token => accessToken;
     }
 }

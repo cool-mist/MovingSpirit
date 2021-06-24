@@ -1,44 +1,33 @@
-﻿using Newtonsoft.Json;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace MovingSpirit.Api
 {
-    public interface ISpotController
+    public interface ISpotController : IDisposable
     {
         public const string RUNNING_STATE = "Running";
         public const string STOPPED_STATE = "Stopped";
 
-        Task<string> Start(CancellationToken cancellationToken);
+        Task<ITaskResponse<ISpotState>> StartAsync(CancellationToken cancellationToken);
 
-        Task<string> Stop(CancellationToken cancellationToken);
+        Task<ITaskResponse<ISpotState>> StopAsync(CancellationToken cancellationToken);
 
-        Task<SpotControllerResponse> GetStatus(CancellationToken cancellationToken);
-
+        Task<ITaskResponse<ISpotState>> GetStateAsync(CancellationToken cancellationToken);
     }
 
-    public class SpotControllerResponse
+    public interface ISpotState
     {
-        [JsonProperty("status")]
-        public string Status { get; set; }
+        public string State { get; }
+    }
 
+    public interface IAccessToken
+    {
+        public string Token { get; }
+    }
 
-        [JsonProperty("desired_capacity")]
-        public int SpotCapacity { get; set; }
-
-        public string ToString(bool capitalize = false)
-        {
-            if (capitalize)
-            {
-                return $"Instance is `{Status}`";
-            }
-
-            return $"instance is `{Status}`";
-        }
-
-        public override string ToString()
-        {
-            return ToString(capitalize: false);
-        }
+    public interface ISpotTokenProvider
+    {
+        Task<IAccessToken> GetAccessToken(CancellationToken cancellationToken);
     }
 }

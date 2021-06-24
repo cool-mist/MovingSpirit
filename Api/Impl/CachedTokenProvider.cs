@@ -4,13 +4,13 @@ using System.Threading.Tasks;
 
 namespace MovingSpirit.Api.Impl
 {
-    internal class CachedTokenProvider : IM2MTokenProvider
+    internal class CachedTokenProvider : ISpotTokenProvider
     {
         private IAccessToken accessToken;
         private readonly object accessTokenLock = new object();
-        private readonly IM2MTokenProvider innerTokenProvider;
+        private readonly ISpotTokenProvider innerTokenProvider;
 
-        internal CachedTokenProvider(IM2MTokenProvider innerTokenProvider)
+        internal CachedTokenProvider(ISpotTokenProvider innerTokenProvider)
         {
             this.innerTokenProvider = innerTokenProvider;
             DoRefreshOnce();
