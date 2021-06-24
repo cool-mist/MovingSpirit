@@ -91,7 +91,8 @@ namespace MovingSpirit.Api.Impl
             {
                 minecraft = await GetMinecraftServerStateAsync(actions, cancellationToken);
             }
-            else if (minecraft == null || minecraft.OnlinePlayers <= 0)
+
+            if (spot?.State != ISpotController.STOPPED_STATE && minecraft?.OnlinePlayers <= 0)
             {
                 spot = await StopSpotInstanceStateAsync(actions, cancellationToken);
             }
