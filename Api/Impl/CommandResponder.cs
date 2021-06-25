@@ -1,5 +1,6 @@
 ﻿using DSharpPlus.CommandsNext;
 using DSharpPlus.Entities;
+using MinecraftUtils.Api;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -19,7 +20,7 @@ namespace MovingSpirit.Api.Impl
                 .WithTitle("Command Results")
                 .WithDescription(response?.Result?.Response)
                 .AddField("Spot Instance", GetState(response?.Result?.Spot?.State))
-                .AddField("Minecraft Server", GetState(response?.Result?.Minecraft?.Online), inline: true)
+                .AddField("Minecraft Server", GetState(response?.Result?.Minecraft?.State), inline: true)
                 .AddField("Players", GetPlayers(response?.Result?.Minecraft), inline: true)
                 .AddField("Total Execution Time", GetTotalExecutionTime(response))
                 .AddField("Breakdown", GetStats(response?.Result?.Actions));
@@ -29,10 +30,10 @@ namespace MovingSpirit.Api.Impl
 
         private static string GetTotalExecutionTime(ITaskResponse<ICommandResponse> response)
         {
-            return $"`{string.Format("{0:0.000}", response.Stats.ExecutionTime.TotalSeconds)} s`";
+            return $"`{string.Format("{0:0.000}", response.Task.Stats.ExecutionTime.TotalSeconds)} s`";
         }
 
-        private static string GetStats(IReadOnlyCollection<ICommandAction> actions)
+        private static string GetStats(IReadOnlyCollection<ITaskAction> actions)
         {
             if (actions?.Count == 0)
             {
@@ -41,7 +42,7 @@ namespace MovingSpirit.Api.Impl
 
             int idx = 1;
             StringBuilder builder = new StringBuilder();
-            foreach (ICommandAction action in actions)
+            foreach (ITaskAction action in actions)
             {
                 builder.Append($"**{idx}**. `{action.Name}`");
                 bool appendExecutionTime = true;
@@ -72,7 +73,7 @@ namespace MovingSpirit.Api.Impl
 
         private static string GetPlayers(IMinecraftState minecraft)
         {
-            if (minecraft == null || !minecraft.Online)
+            if (minecraft?.State == null)
             {
                 return "NA";
             }

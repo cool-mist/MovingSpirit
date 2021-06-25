@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using MinecraftUtils.Api;
+using Newtonsoft.Json;
 using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -10,27 +11,38 @@ namespace MovingSpirit.Api.Impl
     internal class SpotController : ISpotController
     {
         private readonly ISpotTokenProvider tokenProvider;
+        private readonly ITaskExecutor taskExecutor;
         private readonly HttpClient httpClient;
 
-        public SpotController(ISpotTokenProvider tokenProvider, string baseUrl)
+        public SpotController(ISpotTokenProvider tokenProvider, ITaskExecutor taskExecutor, IBotConfig botConfig)
         {
             this.tokenProvider = tokenProvider;
-            this.httpClient = InitializeHttpClient(baseUrl);
+            this.taskExecutor = taskExecutor;
+            this.httpClient = InitializeHttpClient(botConfig.SpotApiBaseUrl);
         }
 
         public Task<ITaskResponse<ISpotState>> GetStateAsync(CancellationToken cancellationToken)
         {
-            return TaskExecutor.ExecuteAsync(ExecuteHttpRequestAsyncTask("minecraft/status", cancellationToken));
+            return taskExecutor.ExecuteAsync(
+                TaskActionNames.GetInstanceState.ToString(),
+                ExecuteHttpRequestAsyncTask("minecraft/status", cancellationToken),
+                cancellationToken);
         }
 
         public Task<ITaskResponse<ISpotState>> StartAsync(CancellationToken cancellationToken)
         {
-            return TaskExecutor.ExecuteAsync(ExecuteHttpRequestAsyncTask("minecraft/start", cancellationToken));
+            return taskExecutor.ExecuteAsync(
+                TaskActionNames.StartInstance.ToString(),
+                ExecuteHttpRequestAsyncTask("minecraft/start", cancellationToken),
+                cancellationToken);
         }
 
         public Task<ITaskResponse<ISpotState>> StopAsync(CancellationToken cancellationToken)
         {
-            return TaskExecutor.ExecuteAsync(ExecuteHttpRequestAsyncTask("minecraft/stop", cancellationToken));
+            return taskExecutor.ExecuteAsync(
+                TaskActionNames.StopInstance.ToString(),
+                ExecuteHttpRequestAsyncTask("minecraft/stop", cancellationToken),
+                cancellationToken);
         }
 
         public void Dispose()

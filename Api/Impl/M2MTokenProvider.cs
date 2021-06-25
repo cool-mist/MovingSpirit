@@ -12,19 +12,19 @@ namespace MovingSpirit.Api.Impl
         private readonly TokenRequest tokenRequest;
         private readonly HttpClient httpClient;
 
-        public M2MTokenProvider(string clientId, string clientSecret, string audience, string tokenUrl)
+        public M2MTokenProvider(IBotConfig botConfig)
         {
             this.tokenRequest = new TokenRequest()
             {
-                ClientId = clientId,
-                ClientSecret = clientSecret,
-                Audience = audience,
+                ClientId = botConfig.ClientId,
+                ClientSecret = botConfig.ClientSecret,
+                Audience = botConfig.TokenAudience,
                 GrantType = "client_credentials"
             };
 
             this.httpClient = new HttpClient()
             {
-                BaseAddress = new Uri(tokenUrl)
+                BaseAddress = new Uri(botConfig.TokenBaseUrl)
             };
         }
 

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using MinecraftUtils.Api;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace MovingSpirit.Api
@@ -26,13 +27,6 @@ namespace MovingSpirit.Api
 
         string Response { get; }
 
-        IReadOnlyCollection<ICommandAction> Actions { get; }
-    }
-
-    public interface ICommandAction
-    {
-        public string Name { get; }
-
-        public ITaskStatistics Stats { get; }
+        IReadOnlyCollection<ITaskAction> Actions { get; }
     }
 }

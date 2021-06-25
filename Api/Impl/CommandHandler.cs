@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MinecraftUtils.Api;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,43 +11,55 @@ namespace MovingSpirit.Api.Impl
         private readonly ISpotController spotController;
         private readonly IMinecraftClient minecraftClient;
         private readonly TimeSpan commandTimeout;
+        private IBotConfig botConfig;
+        private ITaskExecutor taskExecutor;
 
-        public CommandHandler(ISpotController spotController, IMinecraftClient minecraftClient, TimeSpan commandTimeout)
+        public CommandHandler(
+            ISpotController spotController,
+            IMinecraftClient minecraftClient,
+            TimeSpan commandTimeout,
+            IBotConfig botConfig,
+            ITaskExecutor taskExecutor)
         {
             this.spotController = spotController;
             this.minecraftClient = minecraftClient;
             this.commandTimeout = commandTimeout;
+            this.botConfig = botConfig;
+            this.taskExecutor = taskExecutor;
         }
 
         public Task<ITaskResponse<ICommandResponse>> ExecuteAsync(BotCommand command)
         {
             var cancellationToken = new CancellationTokenSource(commandTimeout).Token;
 
-            return TaskExecutor.ExecuteAsync(() =>
-            {
-                return command switch
+            return taskExecutor.ExecuteAsync(
+                command.ToString(),
+                () =>
                 {
-                    BotCommand.Status => GetStateAsync(cancellationToken),
-                    BotCommand.Start => StartAsync(cancellationToken),
-                    BotCommand.Stop => StopAsync(cancellationToken),
-                    BotCommand.None => GetStateAsync(cancellationToken),
-                    _ => GetStateAsync(cancellationToken),
-                };
-            });
+                    return command switch
+                    {
+                        BotCommand.Status => GetStateAsync(cancellationToken),
+                        BotCommand.Start => StartAsync(cancellationToken),
+                        BotCommand.Stop => StopAsync(cancellationToken),
+                        BotCommand.None => GetStateAsync(cancellationToken),
+                        _ => GetStateAsync(cancellationToken),
+                    };
+                },
+                cancellationToken);
         }
 
         internal async Task<ICommandResponse> GetStateAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            List<ICommandAction> actions = new List<ICommandAction>();
+            List<ITaskAction> allTasks = new List<ITaskAction>();
             var response = string.Empty;
 
-            ISpotState spot = await GetSpotInstanceStateAsync(actions, cancellationToken);
+            ISpotState spot = await GetSpotInstanceStateAsync(allTasks, cancellationToken);
             IMinecraftState minecraft = null;
 
             if (spot?.State == ISpotController.RUNNING_STATE)
             {
-                minecraft = await GetMinecraftServerStateAsync(actions, cancellationToken);
+                minecraft = await GetMinecraftServerStateAsync(allTasks, cancellationToken);
             }
 
             return new CommandResponse()
@@ -54,7 +67,7 @@ namespace MovingSpirit.Api.Impl
                 Spot = spot,
                 Minecraft = minecraft,
                 Command = BotCommand.Status,
-                Actions = actions.AsReadOnly(),
+                Actions = allTasks.AsReadOnly(),
                 Response = response
             };
         }
@@ -62,21 +75,21 @@ namespace MovingSpirit.Api.Impl
         internal async Task<ICommandResponse> StartAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            List<ICommandAction> actions = new List<ICommandAction>();
+            List<ITaskAction> allTasks = new List<ITaskAction>();
             var response = string.Empty;
 
-            ISpotState spot = await GetSpotInstanceStateAsync(actions, cancellationToken);
+            ISpotState spot = await GetSpotInstanceStateAsync(allTasks, cancellationToken);
             IMinecraftState minecraft = null;
 
             if (spot?.State == ISpotController.STOPPED_STATE)
             {
-                spot = await StartSpotInstanceStateAsync(actions, cancellationToken);
-                response = $"Issued `{CommandActions.StartInstance}` to start the instance";
+                spot = await StartSpotInstanceStateAsync(allTasks, cancellationToken);
+                response = $"Issued `{TaskActionNames.StartInstance}` to start the instance";
             }
             else if (spot?.State == ISpotController.RUNNING_STATE)
             {
-                minecraft = await GetMinecraftServerStateAsync(actions, cancellationToken);
-                response = $"Did not issue `{CommandActions.StartInstance}` because instance is already running";
+                minecraft = await GetMinecraftServerStateAsync(allTasks, cancellationToken);
+                response = $"Did not issue `{TaskActionNames.StartInstance}` because instance is already running";
             }
 
             return new CommandResponse()
@@ -84,7 +97,7 @@ namespace MovingSpirit.Api.Impl
                 Spot = spot,
                 Minecraft = minecraft,
                 Command = BotCommand.Start,
-                Actions = actions.AsReadOnly(),
+                Actions = allTasks.AsReadOnly(),
                 Response = response
             };
         }
@@ -92,26 +105,26 @@ namespace MovingSpirit.Api.Impl
         internal async Task<ICommandResponse> StopAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            List<ICommandAction> actions = new List<ICommandAction>();
+            List<ITaskAction> allTasks = new List<ITaskAction>();
             var response = string.Empty;
 
-            ISpotState spot = await GetSpotInstanceStateAsync(actions, cancellationToken);
+            ISpotState spot = await GetSpotInstanceStateAsync(allTasks, cancellationToken);
             IMinecraftState minecraft = null;
 
             if (spot?.State == ISpotController.RUNNING_STATE)
             {
-                minecraft = await GetMinecraftServerStateAsync(actions, cancellationToken);
+                minecraft = await GetMinecraftServerStateAsync(allTasks, cancellationToken);
 
             }
 
             if (spot?.State != ISpotController.STOPPED_STATE && minecraft?.OnlinePlayers <= 0)
             {
-                spot = await StopSpotInstanceStateAsync(actions, cancellationToken);
-                response = $"Issued `{CommandActions.StopInstance}` to stop the instance as instance is not stopped and no players are playing on the server";
+                spot = await StopSpotInstanceStateAsync(allTasks, cancellationToken);
+                response = $"Issued `{TaskActionNames.StopInstance}` to stop the instance as instance is not stopped and no players are playing on the server";
             }
             else
             {
-                response = $"Did not issue `{CommandActions.StopInstance}` because {minecraft?.OnlinePlayers} player(s) are still playing on the server";
+                response = $"Did not issue `{TaskActionNames.StopInstance}` because {minecraft?.OnlinePlayers} player(s) are still playing on the server";
             }
 
             return new CommandResponse()
@@ -119,53 +132,45 @@ namespace MovingSpirit.Api.Impl
                 Spot = spot,
                 Minecraft = minecraft,
                 Command = BotCommand.Stop,
-                Actions = actions.AsReadOnly(),
+                Actions = allTasks.AsReadOnly(),
                 Response = response
             };
         }
 
-        private Task<ISpotState> GetSpotInstanceStateAsync(List<ICommandAction> actions, CancellationToken cancellationToken)
+        private Task<ISpotState> GetSpotInstanceStateAsync(List<ITaskAction> allTasks, CancellationToken cancellationToken)
         {
             return ExecuteCommandAction(
-                CommandActions.GetInstanceState,
                 () => spotController.GetStateAsync(cancellationToken),
-                actions);
+                allTasks);
         }
 
-        private Task<ISpotState> StartSpotInstanceStateAsync(List<ICommandAction> actions, CancellationToken cancellationToken)
+        private Task<ISpotState> StartSpotInstanceStateAsync(List<ITaskAction> allTasks, CancellationToken cancellationToken)
         {
             return ExecuteCommandAction(
-                CommandActions.StartInstance,
                 () => spotController.StartAsync(cancellationToken),
-                actions);
+                allTasks);
         }
 
-        private Task<ISpotState> StopSpotInstanceStateAsync(List<ICommandAction> actions, CancellationToken cancellationToken)
+        private Task<ISpotState> StopSpotInstanceStateAsync(List<ITaskAction> allTasks, CancellationToken cancellationToken)
         {
             return ExecuteCommandAction(
-                CommandActions.StopInstance,
                 () => spotController.StopAsync(cancellationToken),
-                actions);
+                allTasks);
         }
 
-        private Task<IMinecraftState> GetMinecraftServerStateAsync(List<ICommandAction> actions, CancellationToken cancellationToken)
+        private Task<IMinecraftState> GetMinecraftServerStateAsync(List<ITaskAction> actions, CancellationToken cancellationToken)
         {
             return ExecuteCommandAction(
-                CommandActions.GetServerState,
-                () => minecraftClient.GetStateAsync(cancellationToken),
+                () => minecraftClient.GetStateAsync(botConfig.MinecraftServerName, cancellationToken),
                 actions);
         }
 
         internal async Task<T> ExecuteCommandAction<T>(
-            CommandActions actionName,
             Func<Task<ITaskResponse<T>>> task,
-            List<ICommandAction> actions) where T : class
+            List<ITaskAction> allTasks) where T : class
         {
-            CommandAction action = new CommandAction(actionName.ToString());
-            actions.Add(action);
-
             var response = await task.Invoke();
-            action.Stats = response?.Stats;
+            allTasks.Add(response.Task);
 
             return response.Result;
         }
@@ -179,12 +184,12 @@ namespace MovingSpirit.Api.Impl
 
         public BotCommand Command { get; set; }
 
-        public IReadOnlyCollection<ICommandAction> Actions { set; get; }
+        public IReadOnlyCollection<ITaskAction> Actions { set; get; }
 
         public string Response { get; set; }
     }
 
-    internal class CommandAction : ICommandAction
+    internal class CommandAction : ITaskAction
     {
         public CommandAction(string actionName)
         {
@@ -196,12 +201,5 @@ namespace MovingSpirit.Api.Impl
         public ITaskStatistics Stats { get; set; }
     }
 
-    internal enum CommandActions
-    {
-        None = 0,
-        GetInstanceState,
-        StartInstance,
-        StopInstance,
-        GetServerState
-    }
+
 }

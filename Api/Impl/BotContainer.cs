@@ -1,4 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using MinecraftUtils.Api;
+using MinecraftUtils.Api.Impl;
 using System;
 
 namespace MovingSpirit.Api.Impl
@@ -7,22 +9,19 @@ namespace MovingSpirit.Api.Impl
     {
         public static IServiceProvider CreateServiceProvider()
         {
-            // TODO : Configs
-            string clientId = Environment.GetEnvironmentVariable("MS_CLIENT_ID");
-            string clientSecret = Environment.GetEnvironmentVariable("MS_CLIENT_SECRET");
-            string audience = Environment.GetEnvironmentVariable("MS_LOGIN_AUDIENCE");
-            string tokenUrl = Environment.GetEnvironmentVariable("MS_LOGIN_AUTHORITY");
-            string apiBaseUrl = Environment.GetEnvironmentVariable("MS_SPOT_API");
-            string serverName = Environment.GetEnvironmentVariable("MS_MCSERVER");
-            string commandTimeoutInSeconds = Environment.GetEnvironmentVariable("MS_COMMAND_TIMEOUT");
+            IServiceProvider minecraftUtils = new ServiceCollection()
+                .AddSingletonMinecraftClient()
+                .AddSingletonTaskExecutor()
+                .BuildServiceProvider();
 
-            ISpotTokenProvider innerTokenProvider = new M2MTokenProvider(clientId, clientSecret, audience, tokenUrl);
+            IBotConfig botConfig = new BotConfig();
+            TimeSpan commandTimeout = TimeSpan.FromSeconds(int.Parse(botConfig.CommandTimeoutInSeconds));
+            IMinecraftClient minecraftClient = minecraftUtils.GetService<IMinecraftClient>();
+            ITaskExecutor taskExecutor = minecraftUtils.GetService<ITaskExecutor>();
+            ISpotTokenProvider innerTokenProvider = new M2MTokenProvider(botConfig);
             ISpotTokenProvider cachedTokenProvider = new CachedTokenProvider(innerTokenProvider);
-            ISpotController spotController = new SpotController(cachedTokenProvider, apiBaseUrl);
-            IMinecraftClient minecraftClient = new MinecraftClient(serverName);
-            TimeSpan commandTimeout = TimeSpan.FromSeconds(int.Parse(commandTimeoutInSeconds));
-
-            ICommandHandler commandHandler = new CommandHandler(spotController, minecraftClient, commandTimeout);
+            ISpotController spotController = new SpotController(cachedTokenProvider, taskExecutor, botConfig);
+            ICommandHandler commandHandler = new CommandHandler(spotController, minecraftClient, commandTimeout, botConfig, taskExecutor);
             ICommandResponder commandResponder = new CommandResponder();
 
             IServiceProvider serviceProvider = new ServiceCollection()

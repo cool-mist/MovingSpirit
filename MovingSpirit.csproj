@@ -9,6 +9,7 @@
     <PackageReference Include="DSharpPlus" Version="4.0.1" />
     <PackageReference Include="DSharpPlus.CommandsNext" Version="4.0.1" />
     <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.7" />
+    <PackageReference Include="MinecraftUtils" Version="1.0.2" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
   </ItemGroup>
 
