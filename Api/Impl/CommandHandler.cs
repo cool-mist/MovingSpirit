@@ -197,6 +197,11 @@ namespace MovingSpirit.Api.Impl
                         }
                     }
                 }
+                else
+                {
+                    response = $"Did not issue `{TaskActionNames.StopInstance}` because instance is not `{ISpotController.RUNNING_STATE}`";
+                    succeeded = false;
+                }
             }
 
             return new CommandResponse()
