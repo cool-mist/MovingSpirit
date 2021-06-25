@@ -27,6 +27,8 @@ namespace MovingSpirit.Api
 
         string Response { get; }
 
+        bool Succeeded { get; }
+
         IReadOnlyCollection<ITaskAction> Actions { get; }
     }
 }

@@ -19,6 +19,7 @@ namespace MovingSpirit.Api.Impl
             embedBuilder
                 .WithTitle("Command Results")
                 .WithDescription(response?.Result?.Response)
+                .WithThumbnail($"https://cdn.discordapp.com/embed/avatars/{GetThumbnail(response)}.png")
                 .AddField("Spot Instance", GetState(response?.Result?.Spot?.State))
                 .AddField("Minecraft Server", GetState(response?.Result?.Minecraft?.State), inline: true)
                 .AddField("Players", GetPlayers(response?.Result?.Minecraft), inline: true)
@@ -26,6 +27,29 @@ namespace MovingSpirit.Api.Impl
                 .AddField("Breakdown", GetStats(response?.Result?.Actions));
 
             await ctx.Channel.SendMessageAsync(embedBuilder.Build());
+        }
+
+        private static string GetThumbnail(ITaskResponse<ICommandResponse> response)
+        {
+            // 0 = Blue
+            // 4 = Red
+
+            if (response?.Task?.Stats?.TimedOut ?? true)
+            {
+                return "4";
+            }
+
+            if ((response?.Task?.Stats?.Succeeded ?? false) == false)
+            {
+                return "4";
+            }
+
+            if ((response?.Result?.Succeeded ?? false) == false)
+            {
+                return "3";
+            }
+
+            return "0";
         }
 
         private static string GetTotalExecutionTime(ITaskResponse<ICommandResponse> response)
@@ -45,25 +69,24 @@ namespace MovingSpirit.Api.Impl
             foreach (ITaskAction action in actions)
             {
                 builder.Append($"**{idx}**. `{action.Name}`");
-                bool appendExecutionTime = true;
-                if (action.Stats.TimedOut)
-                {
-                    builder.Append(" timed out after");
-                }
-                else if (action.Stats.Succeeded)
+                bool skipAppendExecutionTime = action.Stats.ExecutionTime == TimeSpan.Zero;
+
+                if (!skipAppendExecutionTime)
                 {
                     builder.Append(" ran for");
-                }
-                else if (action.Stats.ExecutionTime == TimeSpan.Zero)
-                {
-                    builder.Append(" did not run");
-                    appendExecutionTime = false;
+                    builder.Append($" `{string.Format("{0:0.000}", action.Stats.ExecutionTime.TotalSeconds)} s` ");
                 }
 
-                if (appendExecutionTime)
+                if (action.Stats.TimedOut)
                 {
-                    builder.Append($" `{string.Format("{0:0.000}", action.Stats.ExecutionTime.TotalSeconds)} s`\n");
+                    builder.Append(" **[Timed out]**");
                 }
+                else if (!action.Stats.Succeeded)
+                {
+                    builder.Append(" **[Failed]**");
+                }
+
+                builder.Append("\n");
 
                 idx++;
             }
