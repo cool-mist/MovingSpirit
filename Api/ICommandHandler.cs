@@ -13,6 +13,7 @@ namespace MovingSpirit.Api
     {
         None = 0,
         Start,
+        ForceStop,
         Stop,
         Status
     }

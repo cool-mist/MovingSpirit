@@ -42,6 +42,7 @@ namespace MovingSpirit.Api.Impl
                         BotCommand.Status => GetStateAsync(cancellationToken),
                         BotCommand.Start => StartAsync(cancellationToken),
                         BotCommand.Stop => StopAsync(cancellationToken),
+                        BotCommand.ForceStop => ForceStopAsync(cancellationToken),
                         BotCommand.None => GetStateAsync(cancellationToken),
                         _ => GetStateAsync(cancellationToken),
                     };
@@ -179,7 +180,7 @@ namespace MovingSpirit.Api.Impl
                     {
                         if (minecraft?.OnlinePlayers > 0)
                         {
-                            response = $"Did not issue `{TaskActionNames.StopInstance}` because `{minecraft?.OnlinePlayers}` player(s) are playing on the server right now.";
+                            response = $"Did not issue `{TaskActionNames.StopInstance}` because `{minecraft?.OnlinePlayers}` player(s) are playing on the server right now. Pass force flag to force stop.";
                             succeeded = false;
                         }
                         else
@@ -202,6 +203,63 @@ namespace MovingSpirit.Api.Impl
                     response = $"Did not issue `{TaskActionNames.StopInstance}` because instance is not `{ISpotController.RUNNING_STATE}`";
                     succeeded = false;
                 }
+            }
+
+            return new CommandResponse()
+            {
+                Spot = spot,
+                Minecraft = minecraft,
+                Command = BotCommand.Stop,
+                Actions = allTasks.AsReadOnly(),
+                Response = response,
+                Succeeded = succeeded
+            };
+        }
+
+        internal async Task<ICommandResponse> ForceStopAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            List<ITaskAction> allTasks = new List<ITaskAction>();
+            var response = string.Empty;
+            bool succeeded = true;
+
+            ISpotState spot = await GetSpotInstanceStateAsync(allTasks, cancellationToken);
+            IMinecraftState minecraft = null;
+
+            if (spot?.State == null)
+            {
+                response = $"Failed to fetch spot state.";
+            }
+            else
+            {
+                response = $"Spot is {spot.State}.";
+            }
+
+            if (spot?.State == ISpotController.RUNNING_STATE)
+            {
+                minecraft = await GetMinecraftServerStateAsync(allTasks, cancellationToken);
+                if (minecraft?.State == null)
+                {
+                    response += $" Failed to fetch minecraft state.";
+                }
+                else
+                {
+                    if (minecraft?.OnlinePlayers > 0)
+                    {
+                        response += $"`{minecraft?.OnlinePlayers}` player(s) will be kicked.";
+                    }
+                }
+            }
+
+            spot = await StopSpotInstanceStateAsync(allTasks, cancellationToken);
+            if (spot?.State == null)
+            {
+                succeeded = false;
+                response += $"Failed to stop the instance.";
+            }
+            else
+            {
+                response += $" Issued `{TaskActionNames.StopInstance}` to force stop the instance.";
             }
 
             return new CommandResponse()

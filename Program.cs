@@ -44,10 +44,14 @@ namespace MovingSpirit
                 {
                     e.Context.RespondAsync("Timed out. Please try again");
                 }
+                else if (e.Exception.InnerException is RespondHelpException)
+                {
+                    e.Context.RespondAsync("Type @help for list of valid commands");
+                }
                 else if (e.Exception is CommandNotFoundException) { }
                 else if (e.Exception is InvalidOperationException)
                 {
-                    e.Context.RespondAsync("Type @help for list of commands");
+                    e.Context.RespondAsync("Type @help for list of valid commands");
                 }
                 else
                 {

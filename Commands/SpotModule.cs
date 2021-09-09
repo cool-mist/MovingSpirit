@@ -1,6 +1,7 @@
 ﻿using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
 using MovingSpirit.Api;
+using System;
 using System.Threading.Tasks;
 
 namespace MovingSpirit.Commands
@@ -36,6 +37,19 @@ namespace MovingSpirit.Commands
         public Task StopCommand(CommandContext ctx)
         {
             return commandResponder.RespondAsync(commandHandler.ExecuteAsync(BotCommand.Stop), ctx);
+        }
+
+        [Command("down")]
+        [Description("Stop spot instance")]
+        public Task ForceStopCommand(CommandContext ctx, string force)
+        {
+            if ("force".Equals(force, StringComparison.OrdinalIgnoreCase))
+            {
+                return commandResponder.RespondAsync(commandHandler.ExecuteAsync(BotCommand.ForceStop), ctx);
+            }
+
+            throw new RespondHelpException();
+
         }
     }
 }
