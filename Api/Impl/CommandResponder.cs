@@ -1,6 +1,8 @@
 ﻿using DSharpPlus.CommandsNext;
+using DSharpPlus.CommandsNext.Exceptions;
 using DSharpPlus.Entities;
 using MinecraftUtils.Api;
+using MovingSpirit.Commands;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -10,14 +12,18 @@ namespace MovingSpirit.Api.Impl
 {
     internal class CommandResponder : ICommandResponder
     {
-        private TimeSpan deletionTime;
+        private readonly ulong serverStatusChannelId;
+        private readonly ulong historyChannelId;
+        private readonly TimeSpan deletionTime;
 
-        public CommandResponder(TimeSpan deletionTime)
+        public CommandResponder(ulong serverStatusChannelId, ulong historyChannelId, TimeSpan deletionTime)
         {
+            this.serverStatusChannelId = serverStatusChannelId;
+            this.historyChannelId = historyChannelId;
             this.deletionTime = deletionTime;
         }
 
-        public async Task RespondAsync(Task<ITaskResponse<ICommandResponse>> command, CommandContext ctx, bool deleteMessage)
+        public async Task RespondAndArchiveAsync(Task<ITaskResponse<ICommandResponse>> command, CommandContext context)
         {
             var response = await command;
 
@@ -33,18 +39,61 @@ namespace MovingSpirit.Api.Impl
                 .AddField("Total Execution Time", GetTotalExecutionTime(response))
                 .AddField("Breakdown", GetStats(response?.Result?.Actions));
 
-            var message = await ctx.Channel.SendMessageAsync(embedBuilder.Build());
+            var discordMessage = context.Channel.SendMessageAsync(embedBuilder.Build());
 
-            if (deleteMessage)
-            {
-                DeleteMessageAfter(message);
-            }
+            await ModifyChannelName(GetNewChannelName(response));
+
+            await Archive(context, discordMessage);
+
+            return;
         }
 
-        private async void DeleteMessageAfter(DiscordMessage message)
+        private Task ModifyChannelName(string newChannelName)
+        {
+            return Task.CompletedTask;
+        }
+
+        private static string GetNewChannelName(ITaskResponse<ICommandResponse> response)
+        {
+            return GetState(response?.Result?.Spot?.State);
+        }
+
+        public Task ArchiveErrorAsync(CommandsNextExtension sender, CommandErrorEventArgs commandFailureEvent)
+        {
+            var message = "Unknown error occurred :( Retrying can help";
+
+            if (commandFailureEvent.Exception is TaskCanceledException)
+            {
+                message = "Timed out. Please try again";
+            }
+            else if (commandFailureEvent.Exception.InnerException is RespondHelpException)
+            {
+                message = "Type @help for list of valid commands";
+            }
+            else if (commandFailureEvent.Exception is CommandNotFoundException) { }
+            else if (commandFailureEvent.Exception is InvalidOperationException)
+            {
+                message = "Type @help for list of valid commands";
+            }
+
+            var discordMessage = commandFailureEvent.Context.RespondAsync(message);
+
+            return Archive(commandFailureEvent.Context, discordMessage);
+        }
+
+        private Task Archive(CommandContext context, Task<DiscordMessage> message)
+        {
+            return DeleteMessageAfter(message, Task.FromResult(context.Message));
+        }
+
+        private async Task DeleteMessageAfter(params Task<DiscordMessage>[] messages)
         {
             await Task.Delay(this.deletionTime);
-            await message.DeleteAsync();
+
+            foreach (var message in messages)
+            {
+                await (await message).DeleteAsync();
+            }
         }
 
         private static string GetThumbnail(ITaskResponse<ICommandResponse> response)
@@ -130,21 +179,6 @@ namespace MovingSpirit.Api.Impl
             }
 
             return state;
-        }
-
-        private static string GetState(bool? state)
-        {
-            if (state == null)
-            {
-                return "Did not fetch";
-            }
-
-            if (state ?? false)
-            {
-                return "Online";
-            }
-
-            return "Offline";
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using DSharpPlus;
 using DSharpPlus.CommandsNext;
-using DSharpPlus.CommandsNext.Exceptions;
+using Microsoft.Extensions.DependencyInjection;
+using MovingSpirit.Api;
 using MovingSpirit.Api.Impl;
 using MovingSpirit.Commands;
 using System;
@@ -10,19 +11,21 @@ namespace MovingSpirit
 {
     class Program
     {
-        public static void Main(string[] args) => new Program().MainAsync(args).GetAwaiter().GetResult();
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "Main method")]
+        public static void Main(string[] args) => MainAsync().GetAwaiter().GetResult();
 
-        private async Task MainAsync(string[] args)
+        private static async Task MainAsync()
         {
-            DiscordClient bot = CreateBot(BotContainer.CreateServiceProvider());
+            IServiceProvider provider = BotContainer.CreateServiceProvider();
+            DiscordClient bot = CreateBot(provider);
 
             await bot.ConnectAsync();
             await Task.Delay(-1);
         }
 
-        private DiscordClient CreateBot(IServiceProvider serviceProvider)
+        private static DiscordClient CreateBot(IServiceProvider serviceProvider)
         {
-            string token = ReadToken(serviceProvider);
+            string token = GetToken(serviceProvider);
 
             DiscordClient bot = new DiscordClient(new DiscordConfiguration()
             {
@@ -30,6 +33,11 @@ namespace MovingSpirit
                 TokenType = TokenType.Bot,
             });
 
+            return RegisterCommandsConfiguration(bot, serviceProvider);
+        }
+
+        private static DiscordClient RegisterCommandsConfiguration(DiscordClient bot, IServiceProvider serviceProvider)
+        {
             var commands = bot.UseCommandsNext(new CommandsNextConfiguration()
             {
                 StringPrefixes = new[] { "@" },
@@ -38,35 +46,16 @@ namespace MovingSpirit
 
             commands.RegisterCommands<SpotModule>();
 
-            commands.CommandErrored += (s, e) =>
-            {
-                if (e.Exception is TaskCanceledException)
-                {
-                    e.Context.RespondAsync("Timed out. Please try again");
-                }
-                else if (e.Exception.InnerException is RespondHelpException)
-                {
-                    e.Context.RespondAsync("Type @help for list of valid commands");
-                }
-                else if (e.Exception is CommandNotFoundException) { }
-                else if (e.Exception is InvalidOperationException)
-                {
-                    e.Context.RespondAsync("Type @help for list of valid commands");
-                }
-                else
-                {
-                    e.Context.RespondAsync("Unknown error occurred. Retrying can help");
-                }
-
-                return Task.CompletedTask;
-            };
+            ICommandResponder responder = serviceProvider.GetService<ICommandResponder>();
+            commands.CommandErrored += responder.ArchiveErrorAsync;
 
             return bot;
         }
 
-        private string ReadToken(IServiceProvider serviceProvider)
+        private static string GetToken(IServiceProvider serviceProvider)
         {
-            var token = Environment.GetEnvironmentVariable("MS_TOKEN");
+            var token = serviceProvider.GetService<IBotConfig>().BotToken;
+
             if (string.IsNullOrWhiteSpace(token))
             {
                 Console.WriteLine("Missing token");
@@ -75,6 +64,5 @@ namespace MovingSpirit
 
             return token;
         }
-
     }
 }

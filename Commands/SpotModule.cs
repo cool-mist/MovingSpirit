@@ -22,21 +22,21 @@ namespace MovingSpirit.Commands
         [Description("Show spot instance status")]
         public Task StatusCommand(CommandContext ctx)
         {
-            return commandResponder.RespondAsync(commandHandler.ExecuteAsync(BotCommand.Status), ctx);
+            return commandResponder.RespondAndArchiveAsync(commandHandler.ExecuteAsync(BotCommand.Status), ctx);
         }
 
         [Command("up")]
         [Description("Start spot instance")]
         public Task StartCommand(CommandContext ctx)
         {
-            return commandResponder.RespondAsync(commandHandler.ExecuteAsync(BotCommand.Start), ctx);
+            return commandResponder.RespondAndArchiveAsync(commandHandler.ExecuteAsync(BotCommand.Start), ctx);
         }
 
         [Command("down")]
         [Description("Stop spot instance")]
         public Task StopCommand(CommandContext ctx)
         {
-            return commandResponder.RespondAsync(commandHandler.ExecuteAsync(BotCommand.Stop), ctx);
+            return commandResponder.RespondAndArchiveAsync(commandHandler.ExecuteAsync(BotCommand.Stop), ctx);
         }
 
         [Command("down")]
@@ -45,7 +45,7 @@ namespace MovingSpirit.Commands
         {
             if ("force".Equals(force, StringComparison.OrdinalIgnoreCase))
             {
-                return commandResponder.RespondAsync(commandHandler.ExecuteAsync(BotCommand.ForceStop), ctx);
+                return commandResponder.RespondAndArchiveAsync(commandHandler.ExecuteAsync(BotCommand.ForceStop), ctx);
             }
 
             throw new RespondHelpException();

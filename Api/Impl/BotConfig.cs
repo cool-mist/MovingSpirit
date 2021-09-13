@@ -4,33 +4,31 @@ namespace MovingSpirit.Api.Impl
 {
     public class BotConfig : IBotConfig
     {
-        public BotConfig()
+        public string MinecraftServerName => GetConfigValue("MS_MCSERVER");
+
+        public string SpotApiBaseUrl => GetConfigValue("MS_SPOT_API");
+
+        public string ClientId => GetConfigValue("MS_CLIENT_ID");
+
+        public string ClientSecret => GetConfigValue("MS_CLIENT_SECRET");
+
+        public string BotToken => GetConfigValue("MS_TOKEN");
+
+        public string TokenBaseUrl => GetConfigValue("MS_LOGIN_AUTHORITY");
+
+        public string TokenAudience => GetConfigValue("MS_LOGIN_AUDIENCE");
+
+        public string CommandTimeoutInSeconds => GetConfigValue("MS_COMMAND_TIMEOUT");
+
+        public string DeleteAfterInSeconds => GetConfigValue("MS_RESPONSE_DELETE_AFTER");
+
+        public string HistoryChannelId => GetConfigValue("MS_HISTORY_CHANNEL_ID");
+
+        public string ServerStatusChannelId => GetConfigValue("MS_SERVER_STATUS_CHANNEL_ID");
+
+        private static string GetConfigValue(string key)
         {
-            MinecraftServerName = Environment.GetEnvironmentVariable("MS_MCSERVER");
-            ClientId = Environment.GetEnvironmentVariable("MS_CLIENT_ID");
-            ClientSecret = Environment.GetEnvironmentVariable("MS_CLIENT_SECRET");
-            TokenAudience = Environment.GetEnvironmentVariable("MS_LOGIN_AUDIENCE");
-            TokenBaseUrl = Environment.GetEnvironmentVariable("MS_LOGIN_AUTHORITY");
-            SpotApiBaseUrl = Environment.GetEnvironmentVariable("MS_SPOT_API");
-            CommandTimeoutInSeconds = Environment.GetEnvironmentVariable("MS_COMMAND_TIMEOUT");
-            DeleteAfterInSeconds = Environment.GetEnvironmentVariable("MS_RESPONSE_DELETE_AFTER");
+            return Environment.GetEnvironmentVariable(key);
         }
-
-        public string MinecraftServerName { get; }
-
-        public string SpotApiBaseUrl { get; }
-
-        public string ClientId { get; }
-
-        public string ClientSecret { get; }
-
-        public string TokenBaseUrl { get; }
-
-        public string TokenAudience { get; }
-
-        public string CommandTimeoutInSeconds { get; }
-
-        public string DeleteAfterInSeconds { get; }
-
     }
 }

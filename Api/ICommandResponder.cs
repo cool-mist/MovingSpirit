@@ -6,6 +6,9 @@ namespace MovingSpirit.Api
 {
     public interface ICommandResponder
     {
-        public Task RespondAsync(Task<ITaskResponse<ICommandResponse>> command, CommandContext ctx, bool deleteMessage = true);
+        Task RespondAndArchiveAsync(Task<ITaskResponse<ICommandResponse>> command, CommandContext commandEvent);
+
+        Task ArchiveErrorAsync(CommandsNextExtension sender, CommandErrorEventArgs commandErrorEvent);
+
     }
 }
