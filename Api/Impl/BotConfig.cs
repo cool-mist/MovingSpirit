@@ -4,38 +4,33 @@ namespace MovingSpirit.Api.Impl
 {
     public class BotConfig : IBotConfig
     {
-        private readonly string clientId;
-        private readonly string clientSecret;
-        private readonly string audience;
-        private readonly string tokenUrl;
-        private readonly string apiBaseUrl;
-        private readonly string serverName;
-        private readonly string commandTimeoutInSeconds;
-
         public BotConfig()
         {
-            this.clientId = Environment.GetEnvironmentVariable("MS_CLIENT_ID");
-            this.clientSecret = Environment.GetEnvironmentVariable("MS_CLIENT_SECRET");
-            this.audience = Environment.GetEnvironmentVariable("MS_LOGIN_AUDIENCE");
-            this.tokenUrl = Environment.GetEnvironmentVariable("MS_LOGIN_AUTHORITY");
-            this.apiBaseUrl = Environment.GetEnvironmentVariable("MS_SPOT_API");
-            this.serverName = Environment.GetEnvironmentVariable("MS_MCSERVER");
-            this.commandTimeoutInSeconds = Environment.GetEnvironmentVariable("MS_COMMAND_TIMEOUT");
+            MinecraftServerName = Environment.GetEnvironmentVariable("MS_MCSERVER");
+            ClientId = Environment.GetEnvironmentVariable("MS_CLIENT_ID");
+            ClientSecret = Environment.GetEnvironmentVariable("MS_CLIENT_SECRET");
+            TokenAudience = Environment.GetEnvironmentVariable("MS_LOGIN_AUDIENCE");
+            TokenBaseUrl = Environment.GetEnvironmentVariable("MS_LOGIN_AUTHORITY");
+            SpotApiBaseUrl = Environment.GetEnvironmentVariable("MS_SPOT_API");
+            CommandTimeoutInSeconds = Environment.GetEnvironmentVariable("MS_COMMAND_TIMEOUT");
+            DeleteAfterInSeconds = Environment.GetEnvironmentVariable("MS_RESPONSE_DELETE_AFTER");
         }
 
-        public string MinecraftServerName => serverName;
+        public string MinecraftServerName { get; }
 
-        public string SpotApiBaseUrl => apiBaseUrl;
+        public string SpotApiBaseUrl { get; }
 
-        public string ClientId => clientId;
+        public string ClientId { get; }
 
-        public string ClientSecret => clientSecret;
+        public string ClientSecret { get; }
 
-        public string TokenBaseUrl => tokenUrl;
+        public string TokenBaseUrl { get; }
 
-        public string TokenAudience => audience;
+        public string TokenAudience { get; }
 
-        public string CommandTimeoutInSeconds => commandTimeoutInSeconds;
+        public string CommandTimeoutInSeconds { get; }
+
+        public string DeleteAfterInSeconds { get; }
 
     }
 }

@@ -10,7 +10,14 @@ namespace MovingSpirit.Api.Impl
 {
     internal class CommandResponder : ICommandResponder
     {
-        public async Task RespondAsync(Task<ITaskResponse<ICommandResponse>> command, CommandContext ctx)
+        private TimeSpan deletionTime;
+
+        public CommandResponder(TimeSpan deletionTime)
+        {
+            this.deletionTime = deletionTime;
+        }
+
+        public async Task RespondAsync(Task<ITaskResponse<ICommandResponse>> command, CommandContext ctx, bool deleteMessage)
         {
             var response = await command;
 
@@ -26,7 +33,18 @@ namespace MovingSpirit.Api.Impl
                 .AddField("Total Execution Time", GetTotalExecutionTime(response))
                 .AddField("Breakdown", GetStats(response?.Result?.Actions));
 
-            await ctx.Channel.SendMessageAsync(embedBuilder.Build());
+            var message = await ctx.Channel.SendMessageAsync(embedBuilder.Build());
+
+            if (deleteMessage)
+            {
+                DeleteMessageAfter(message);
+            }
+        }
+
+        private async void DeleteMessageAfter(DiscordMessage message)
+        {
+            await Task.Delay(this.deletionTime);
+            await message.DeleteAsync();
         }
 
         private static string GetThumbnail(ITaskResponse<ICommandResponse> response)

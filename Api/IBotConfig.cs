@@ -15,5 +15,7 @@
         public string TokenAudience { get; }
 
         public string CommandTimeoutInSeconds { get; }
+
+        public string DeleteAfterInSeconds { get; }
     }
 }
