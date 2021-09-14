@@ -18,7 +18,7 @@ namespace MovingSpirit.Api.Impl
             TimeSpan commandTimeout = TimeSpan.FromSeconds(int.Parse(botConfig.CommandTimeoutInSeconds));
             TimeSpan deleteAfter = TimeSpan.FromSeconds(int.Parse(botConfig.DeleteAfterInSeconds));
             ulong historyChannelId = ulong.Parse(botConfig.HistoryChannelId);
-            ulong serverStatusChannelId = ulong.Parse(botConfig.ServerStatusChannelId);
+            ulong serverStatusChannelId = 0;// ulong.Parse(botConfig.ServerStatusChannelId);
             IMinecraftClient minecraftClient = minecraftUtils.GetService<IMinecraftClient>();
             ITaskExecutor taskExecutor = minecraftUtils.GetService<ITaskExecutor>();
             ISpotTokenProvider innerTokenProvider = new M2MTokenProvider(botConfig);

@@ -27,6 +27,8 @@ namespace MovingSpirit.Api.Impl
         {
             var response = await command;
 
+            var totalExecutionTime = GetTotalExecutionTime(response);
+
             var embedBuilder = new DiscordEmbedBuilder();
 
             embedBuilder
@@ -36,21 +38,25 @@ namespace MovingSpirit.Api.Impl
                 .AddField("Spot Instance", GetState(response?.Result?.Spot?.State))
                 .AddField("Minecraft Server", GetState(response?.Result?.Minecraft?.State), inline: true)
                 .AddField("Players", GetPlayers(response?.Result?.Minecraft), inline: true)
-                .AddField("Total Execution Time", GetTotalExecutionTime(response))
+                .AddField("Total Execution Time", totalExecutionTime)
                 .AddField("Breakdown", GetStats(response?.Result?.Actions));
 
             var discordMessage = context.Channel.SendMessageAsync(embedBuilder.Build());
 
-            await ModifyChannelName(GetNewChannelName(response));
+            // await ModifyChannelName(context, GetNewChannelName(response));
+            // Discord has a rate limit on channel updates
 
-            await Archive(context, discordMessage);
+            await Archive(context, discordMessage, response?.Result?.Response, totalExecutionTime);
 
             return;
         }
 
-        private Task ModifyChannelName(string newChannelName)
+        private Task ModifyChannelName(CommandContext context, string newChannelName)
         {
-            return Task.CompletedTask;
+            return context.Guild.GetChannel(serverStatusChannelId).ModifyAsync((channel) =>
+            {
+                channel.Name = newChannelName;
+            });
         }
 
         private static string GetNewChannelName(ITaskResponse<ICommandResponse> response)
@@ -78,12 +84,26 @@ namespace MovingSpirit.Api.Impl
 
             var discordMessage = commandFailureEvent.Context.RespondAsync(message);
 
-            return Archive(commandFailureEvent.Context, discordMessage);
+            return Archive(commandFailureEvent.Context, discordMessage, message);
         }
 
-        private Task Archive(CommandContext context, Task<DiscordMessage> message)
+        private async Task Archive(CommandContext context, Task<DiscordMessage> message, string result, string executionTime = null)
         {
-            return DeleteMessageAfter(message, Task.FromResult(context.Message));
+            var historyMessage = $"**{context.User.Username}** :arrow_forward: `{context.Message.Content}`";
+
+            if (!string.IsNullOrWhiteSpace(result))
+            {
+                historyMessage += $" :scroll: {result}";
+            };
+
+            if (executionTime != null)
+            {
+                historyMessage += $" :stopwatch: {executionTime}";
+            }
+
+            await context.Guild.GetChannel(historyChannelId).SendMessageAsync(historyMessage);
+
+            // await DeleteMessageAfter(message, Task.FromResult(context.Message));
         }
 
         private async Task DeleteMessageAfter(params Task<DiscordMessage>[] messages)
@@ -98,25 +118,38 @@ namespace MovingSpirit.Api.Impl
 
         private static string GetThumbnail(ITaskResponse<ICommandResponse> response)
         {
+            var responseString = GetResponseString(response);
+
             // 0 = Blue
+            // 3 = Yellow
             // 4 = Red
 
+            return responseString switch
+            {
+                "Succeeded" => "0",
+                "Timedout" => "3",
+                _ => "4",
+            };
+        }
+
+        private static string GetResponseString(ITaskResponse<ICommandResponse> response)
+        {
             if (response?.Task?.Stats?.TimedOut ?? true)
             {
-                return "4";
+                return "Timedout";
             }
 
             if ((response?.Task?.Stats?.Succeeded ?? false) == false)
             {
-                return "4";
+                return "Failed";
             }
 
             if ((response?.Result?.Succeeded ?? false) == false)
             {
-                return "3";
+                return "Failed";
             }
 
-            return "0";
+            return "Succeeded";
         }
 
         private static string GetTotalExecutionTime(ITaskResponse<ICommandResponse> response)
